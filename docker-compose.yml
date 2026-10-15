@@ -1,0 +1,55 @@
+services:
+  prometheus:
+    image: prom/prometheus:v3.1.0 # Explicit tag, avoid 'latest'
+    container_name: prometheus
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      # Bind-mount configuration
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      # Named volume for persistent metrics data
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    security_opt:
+      - no-new-privileges:true
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.1
+    container_name: "alertmanager"
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_data:/alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+      - "--web.external-url=https://alertmanager.example.com"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  grafana:
+    image: grafana/grafana:12.4.0
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      # Best practice: reference a hidden password variable inside a .env file
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  prometheus_data:
+  alertmanager_data:
+  grafana_data:
